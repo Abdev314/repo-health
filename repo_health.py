@@ -75,7 +75,7 @@ def get_latest_release(repository):
     return {
         "tag": data["tag_name"],
         "name": data["name"],
-        "published_at": data[published_at],
+        "published_at": data["published_at"],
     }
 def main():
     args = parse_arguments()
