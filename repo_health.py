@@ -1,6 +1,7 @@
 import argparse
 import os 
 import requests
+from datetime import datetime, timezone
 
 GITHUB_API_URL = "https://api.github.com"
 
@@ -64,6 +65,19 @@ def get_latest_commit(repository):
         "date": commit["author"]["date"],
         "message": commit["message"],
     }
+def get_activity_status(latest_commit):
+    if not latest_commit:
+        return "inactive"
+
+    commit_date = datetime.fromisoformat(
+        latest_commit["date"].replace("Z", "+00:00")
+    )
+
+    now = datetime.now(timezone.utc)
+    days_since_commit = (now - commit_date).days
+
+    return "active" if days_since_commit <= 90 else "inactive"
+
 
 def get_latest_release(repository):
     try: data= github_request(f"/repos/{repository}/releases/latest")
@@ -112,6 +126,7 @@ def main():
         latest_release = get_latest_release(repository)
         open_pull_requests = get_open_pull_requests(repository)
         ci_status = get_ci_status(repository)
+        activity_status = get_activity_status(latest_commit)
 
         print(f"\nRepository: {info['name']}")
         print(f"Stars: {info['stars']}")
@@ -124,6 +139,8 @@ def main():
             print(f"Message: {latest_commit['message']}")
         else:
             print("Last commit: None")
+            
+        print(f"Activity: {activity_status}")
 
         if latest_release:
             print(f"Latest release: {latest_release['tag']} - {latest_release['name']}")
