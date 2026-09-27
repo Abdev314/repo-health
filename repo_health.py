@@ -46,13 +46,22 @@ def parse_arguments():
 
 def github_request(endpoint):
     url = f"{GITHUB_API_URL}{endpoint}"
+
     headers = {
         "Accept": "application/vnd.github+json",
     }
-    token = os.getenv("GITHUB_API_URL")
-    
-    response = requests.get(url, headers=headers, timeout=10)
-    response.raise_for_status()
+
+    token = os.getenv("GITHUB_TOKEN")
+
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+    except requests.RequestException as error:
+        raise RuntimeError(f"GitHub API request failed: {error}") from error
+
     return response.json()
 
 def get_repository_info(repository):
@@ -94,7 +103,7 @@ def get_activity_status(latest_commit):
 def get_latest_release(repository):
     try: data= github_request(f"/repos/{repository}/releases/latest")
     except requests.HTTPError as error: 
-        if error.response.status_code == 404:
+        if "404" in str(error):
             return None
         raise
 
@@ -136,44 +145,45 @@ def main():
     for repository in repositories:
         if not validate_repository(repository):
             print(f"Invalid repository format: {repository}")
-            return
-        #data = github_request(f"/repos/{repository}")
-        info = get_repository_info(repository)
-        latest_commit = get_latest_commit(repository)
-        latest_release = get_latest_release(repository)
-        open_pull_requests = get_open_pull_requests(repository)
-        ci_status = get_ci_status(repository)
-        activity_status = get_activity_status(latest_commit)
+            continue
+        try:
+            #data = github_request(f"/repos/{repository}")
+            info = get_repository_info(repository)
+            latest_commit = get_latest_commit(repository)
+            latest_release = get_latest_release(repository)
+            open_pull_requests = get_open_pull_requests(repository)
+            ci_status = get_ci_status(repository)
+            activity_status = get_activity_status(latest_commit)
 
-        print(f"\nRepository: {info['name']}")
-        print(f"Stars: {info['stars']}")
-        print(f"Forks: {info['forks']}")
-        print(f"Open issues: {info['open_issues']}")
-        print(f"Default branch: {info['default_branch']}")
+            print(f"\nRepository: {info['name']}")
+            print(f"Stars: {info['stars']}")
+            print(f"Forks: {info['forks']}")
+            print(f"Open issues: {info['open_issues']}")
+            print(f"Default branch: {info['default_branch']}")
 
-        if latest_commit:
-            print(f"Last commit: {latest_commit['date']}")
-            print(f"Message: {latest_commit['message']}")
-        else:
-            print("Last commit: None")
+            if latest_commit:
+                print(f"Last commit: {latest_commit['date']}")
+                print(f"Message: {latest_commit['message']}")
+            else:
+                print("Last commit: None")
             
-        print(f"Activity: {activity_status}")
+            print(f"Activity: {activity_status}")
 
-        if latest_release:
-            print(f"Latest release: {latest_release['tag']} - {latest_release['name']}")
-            print(f"Released: {latest_release['published_at']}")
-        else:
-            print("Latest release: None")
+            if latest_release:
+                print(f"Latest release: {latest_release['tag']} - {latest_release['name']}")
+                print(f"Released: {latest_release['published_at']}")
+            else:
+                print("Latest release: None")
 
-        print(f"Open pull requests: {open_pull_requests}")
+            print(f"Open pull requests: {open_pull_requests}")
 
-        if ci_status:
-            print(
-                f"CI status: {ci_status['status']} "
-                f"({ci_status['conclusion']})"
-            )
-        else:
-            print("CI status: None")
-
+            if ci_status:
+                print(
+                    f"CI status: {ci_status['status']} "
+                    f"({ci_status['conclusion']})"
+                )
+            else:
+                print("CI status: None")
+        except RuntimeError as error: print(f"Error: {error}")
 if __name__ == "__main__":
     main()
