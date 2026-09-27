@@ -65,7 +65,18 @@ def get_latest_commit(repository):
         "message": commit["message"],
     }
 
+def get_latest_release(repository):
+    try: data= github_request(f"/repos/{repository}/releases/latest")
+    except requests.HTTPError as error: 
+        if error.response.status_code == 404:
+            return None
+        raise
 
+    return {
+        "tag": data["tag_name"],
+        "name": data["name"],
+        "published_at": data[published_at],
+    }
 def main():
     args = parse_arguments()
 
@@ -76,6 +87,7 @@ def main():
         #data = github_request(f"/repos/{repository}")
         info = get_repository_info(repository)
         latest_commit = get_latest_commit(repository)
+        latest_release = get_latest_release(repository)
 
         print(f"\nRepository: {info['name']}")
         print(f"Stars: {info['stars']}")
@@ -88,6 +100,12 @@ def main():
             print(f"Message: {latest_commit['message']}")
         else:
             print("Last commit: None")
+
+        if latest_release:
+            print(f"Latest release: {latest_release['tag']} - {latest_release['name']}")
+            print(f"Released: {latest_release['published_at']}")
+        else:
+            print("Latest release: None")
 
 if __name__ == "__main__":
     main()
