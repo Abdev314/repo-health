@@ -82,6 +82,23 @@ def get_open_pull_requests(repository):
 
     return len(data)
 
+def get_ci_status(repository):
+    data = github_request(
+        f"/repos/{repository}/actions/runs?per_page=1"
+    )
+
+    runs = data.get("workflow_runs", [])
+
+    if not runs:
+        return None
+
+    run = runs[0]
+
+    return {
+        "status": run["status"],
+        "conclusion": run["conclusion"],
+    }
+
 def main():
     args = parse_arguments()
 
@@ -94,6 +111,7 @@ def main():
         latest_commit = get_latest_commit(repository)
         latest_release = get_latest_release(repository)
         open_pull_requests = get_open_pull_requests(repository)
+        ci_status = get_ci_status(repository)
 
         print(f"\nRepository: {info['name']}")
         print(f"Stars: {info['stars']}")
@@ -114,6 +132,14 @@ def main():
             print("Latest release: None")
 
         print(f"Open pull requests: {open_pull_requests}")
+
+        if ci_status:
+            print(
+                f"CI status: {ci_status['status']} "
+                f"({ci_status['conclusion']})"
+            )
+        else:
+            print("CI status: None")
 
 if __name__ == "__main__":
     main()
