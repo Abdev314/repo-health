@@ -194,16 +194,33 @@ def print_repository_report(
 def main():
     args = parse_arguments()
 
-    repositories = args.repositories
+    repositories = list(args.repositories)
 
     if args.file:
-        repositories.extend(load_repositories_from_file(args.file))
+        try:
+            repositories.extend(load_repositories_from_file(args.file))
+        except OSError as error:
+            print(f"Error reading file: {error}")
+            return
+
+    if not repositories:
+        print("Error: no repositories provided")
+        return
+
+    valid_repositories = []
 
     for repository in repositories:
         if not validate_repository(repository):
             print(f"Invalid repository format: {repository}")
             continue
 
+        valid_repositories.append(repository)
+
+    if not valid_repositories:
+        print("Error: no valid repositories provided")
+        return
+
+    for repository in valid_repositories:
         try:
             info = get_repository_info(repository)
             latest_commit = get_latest_commit(repository)
