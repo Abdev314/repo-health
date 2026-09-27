@@ -68,6 +68,7 @@ def github_request(endpoint):
 
     return response.json()
 
+
 def get_repository_info(repository):
     data = github_request(f"/repos/{repository}")
 
@@ -81,6 +82,7 @@ def get_repository_info(repository):
         "default_branch": data["default_branch"],
         "updated_at": data["updated_at"],
     }
+
 
 def get_latest_commit(repository):
     data = github_request(f"/repos/{repository}/commits")
@@ -108,7 +110,6 @@ def get_activity_status(latest_commit):
     days_since_commit = (now - commit_date).days
 
     return "active" if days_since_commit <= 90 else "inactive"
-
 
 
 def get_latest_release(repository):
@@ -150,6 +151,46 @@ def get_ci_status(repository):
     }
 
 
+def calculate_health_score(
+    activity_status,
+    open_issues,
+    open_pull_requests,
+    ci_status,
+    latest_release,
+):
+    score = 0
+
+    match activity_status:
+        case "active":
+            score += 20
+        case "inactive":
+            pass
+
+    match open_issues:
+        case 0:
+            score += 20
+        case issues if issues <= 5:
+            score += 10
+
+    match open_pull_requests:
+        case 0:
+            score += 20
+        case pull_requests if pull_requests <= 3:
+            score += 10
+
+    match ci_status:
+        case {"conclusion": "success"}:
+            score += 20
+
+    match latest_release:
+        case None:
+            pass
+        case _:
+            score += 20
+
+    return score
+
+
 def print_repository_report(
     info,
     latest_commit,
@@ -157,16 +198,21 @@ def print_repository_report(
     open_pull_requests,
     ci_status,
     activity_status,
+    health_score,
 ):
     print()
     print("=" * 60)
     print(f"Repository: {info['name']}")
     print("=" * 60)
+    print(f"Description:        {info['description'] or 'None'}")
+    print(f"Language:           {info['language'] or 'None'}")
     print(f"Stars:              {info['stars']}")
     print(f"Forks:              {info['forks']}")
     print(f"Open issues:        {info['open_issues']}")
     print(f"Open pull requests: {open_pull_requests}")
     print(f"Activity:           {activity_status}")
+    print(f"Health score:       {health_score}/100")
+    print(f"Last updated:       {info['updated_at']}")
 
     if latest_commit:
         print(f"Last commit:        {latest_commit['date']}")
@@ -190,10 +236,7 @@ def print_repository_report(
         )
     else:
         print("CI status:          None")
-    
-    print(f"Description:        {info['description'] or 'None'}")
-    print(f"Language:           {info['language'] or 'None'}")
-    print(f"Last updated:       {info['updated_at']}")
+
 
 def main():
     args = parse_arguments()
@@ -238,6 +281,14 @@ def main():
             ci_status = get_ci_status(repository)
             activity_status = get_activity_status(latest_commit)
 
+            health_score = calculate_health_score(
+                activity_status,
+                info["open_issues"],
+                open_pull_requests,
+                ci_status,
+                latest_release,
+            )
+
             print_repository_report(
                 info,
                 latest_commit,
@@ -245,6 +296,7 @@ def main():
                 open_pull_requests,
                 ci_status,
                 activity_status,
+                health_score,
             )
 
             checked += 1
