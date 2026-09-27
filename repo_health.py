@@ -14,6 +14,18 @@ def validate_repository(repository):
         and bool(parts[1])
     )
 
+def load_repositories_from_file(filename):
+    with open(filename, "r", encoding="utf-8") as file:
+        repositories = []
+
+        for line in file:
+            repository = line.strip()
+
+            if repository:
+                repositories.append(repository)
+
+    return repositories
+
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Check the health of GitHub repositories."
@@ -116,7 +128,12 @@ def get_ci_status(repository):
 def main():
     args = parse_arguments()
 
-    for repository in args.repositories:
+    repositories = args.repositories
+
+    if args.file:
+        repositories.extend(load_repositories_from_file(args.file))
+
+    for repository in repositories:
         if not validate_repository(repository):
             print(f"Invalid repository format: {repository}")
             return
