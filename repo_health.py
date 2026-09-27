@@ -77,6 +77,11 @@ def get_latest_release(repository):
         "name": data["name"],
         "published_at": data["published_at"],
     }
+def get_open_pull_requests(repository):
+    data = github_request(f"/repos/{repository}/pulls?state=open")
+
+    return len(data)
+
 def main():
     args = parse_arguments()
 
@@ -88,6 +93,7 @@ def main():
         info = get_repository_info(repository)
         latest_commit = get_latest_commit(repository)
         latest_release = get_latest_release(repository)
+        open_pull_requests = get_open_pull_requests(repository)
 
         print(f"\nRepository: {info['name']}")
         print(f"Stars: {info['stars']}")
@@ -106,6 +112,8 @@ def main():
             print(f"Released: {latest_release['published_at']}")
         else:
             print("Latest release: None")
+
+        print(f"Open pull requests: {open_pull_requests}")
 
 if __name__ == "__main__":
     main()
