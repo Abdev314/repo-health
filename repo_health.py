@@ -68,18 +68,19 @@ def github_request(endpoint):
 
     return response.json()
 
-
 def get_repository_info(repository):
     data = github_request(f"/repos/{repository}")
 
     return {
         "name": data["full_name"],
+        "description": data["description"],
+        "language": data["language"],
         "stars": data["stargazers_count"],
         "forks": data["forks_count"],
         "open_issues": data["open_issues_count"],
         "default_branch": data["default_branch"],
+        "updated_at": data["updated_at"],
     }
-
 
 def get_latest_commit(repository):
     data = github_request(f"/repos/{repository}/commits")
@@ -189,7 +190,10 @@ def print_repository_report(
         )
     else:
         print("CI status:          None")
-
+    
+    print(f"Description:        {info['description'] or 'None'}")
+    print(f"Language:           {info['language'] or 'None'}")
+    print(f"Last updated:       {info['updated_at']}")
 
 def main():
     args = parse_arguments()
