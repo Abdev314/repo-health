@@ -53,6 +53,19 @@ def get_repository_info(repository):
         "default_branch": data["default_branch"],
     }
 
+def get_latest_commit(repository):
+    data = github_request(f"/repos/{repository}/commits")
+    
+    if not data:
+        return None 
+    commit = data[0]["commit"]
+
+    return {
+        "date": commit["author"]["date"],
+        "message": commit["message"],
+    }
+
+
 def main():
     args = parse_arguments()
 
@@ -62,12 +75,19 @@ def main():
             return
         #data = github_request(f"/repos/{repository}")
         info = get_repository_info(repository)
+        latest_commit = get_latest_commit(repository)
 
         print(f"\nRepository: {info['name']}")
         print(f"Stars: {info['stars']}")
         print(f"Forks: {info['forks']}")
         print(f"Open issues: {info['open_issues']}")
         print(f"Default branch: {info['default_branch']}")
+
+        if latest_commit:
+            print(f"Last commit: {latest_commit['date']}")
+            print(f"Message: {latest_commit['message']}")
+        else:
+            print("Last commit: None")
 
 if __name__ == "__main__":
     main()
