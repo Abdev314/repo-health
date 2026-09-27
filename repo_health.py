@@ -220,6 +220,11 @@ def main():
         print("Error: no valid repositories provided")
         return
 
+    checked = 0
+    active = 0
+    inactive = 0
+    errors = 0
+
     for repository in valid_repositories:
         try:
             info = get_repository_info(repository)
@@ -237,8 +242,26 @@ def main():
                 ci_status,
                 activity_status,
             )
+
+            checked += 1
+
+            if activity_status == "active":
+                active += 1
+            else:
+                inactive += 1
+
         except RuntimeError as error:
+            errors += 1
             print(f"Error: {error}")
+
+    print()
+    print("=" * 60)
+    print("Summary")
+    print("=" * 60)
+    print(f"Repositories checked: {checked}")
+    print(f"Active:               {active}")
+    print(f"Inactive:             {inactive}")
+    print(f"Errors:               {errors}")
 
 
 if __name__ == "__main__":
