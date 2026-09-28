@@ -52,6 +52,21 @@ def github_request(endpoint):
 
     return response.json()
 
+def get_latest_commit(owner, repository):
+    commits = github_request(
+        f"/repos/{owner}/{repository}/commits"
+        "?per_page=1"
+    )
+
+    if not commits:
+        return None
+
+    commit = commits[0]["commit"]
+
+    return {
+        "date": commit["author"]["date"],
+        "message": commit["message"],
+    }
 
 def get_activity(updated_at):
     from datetime import datetime, timezone
@@ -141,7 +156,18 @@ def get_repository(owner, repository):
         except RuntimeError:
             ci_status = "unknown"
 
-        activity = get_activity(data["updated_at"])
+        # activity = get_activity(data["updated_at"])
+
+        latest_commit = get_latest_commit(
+            owner,
+            repository,
+        )
+
+        activity = (
+            get_activity(latest_commit["date"])
+            if latest_commit
+            else "inactive"
+        )
 
         pull_request_count = len(pulls)
 
