@@ -1,14 +1,13 @@
-import {
-  attachAddRepositoryModalEvents,
-  openAddRepositoryModal,
-} from "./components/AddRepositoryModal";
-import {
-  attachSidebarEvents,
-  renderSidebar,
-} from "./components/Sidebar";
+import { attachAddRepositoryModalEvents, openAddRepositoryModal,} from "./components/AddRepositoryModal";
+import { attachSidebarEvents, renderSidebar,} from "./components/Sidebar";
 import { renderDashboard } from "./pages/Dashboard";
 import { renderRepositoryDetails } from "./pages/RepositoryDetails";
-import type { Repository, View } from "./types/repository";
+import { fetchRepository } from "./services/github";
+import {
+  getRepository,
+  setRepository,
+} from "./services/repositoryStore";
+import type { View } from "./types/repository";
 
 const appElement = document.querySelector<HTMLDivElement>("#app");
 
@@ -20,33 +19,20 @@ const app = appElement;
 
 let currentView: View = "dashboard";
 
-const repository: Repository = {
-  name: "repo-health",
-  owner: "Abdev314",
-  description:
-    "A tool for checking GitHub repository activity, health and development signals.",
-  language: "Python",
-  stars: 12,
-  forks: 2,
-  issues: 3,
-  pullRequests: 1,
-  health: 85,
-  activity: "active",
-  ciStatus: "passing",
-  latestRelease: "v1.2.0",
-  defaultBranch: "main",
-};
-
 function navigate(view: View): void {
   currentView = view;
   render();
 }
 
 function render(): void {
+  const repository = getRepository();
+
   const page =
     currentView === "dashboard"
-      ? renderDashboard()
-      : renderRepositoryDetails({ repository });
+      ? renderDashboard({ repository })
+      : repository
+        ? renderRepositoryDetails({ repository })
+        : renderDashboard({ repository: null });
 
   app.innerHTML = `
     <div class="flex min-h-screen bg-[#f8f8f6] text-slate-900">
@@ -81,8 +67,16 @@ function attachEvents(): void {
         navigate("repository");
       });
 
-    attachAddRepositoryModalEvents((repositoryName) => {
-      console.log("Repository to add:", repositoryName);
+    attachAddRepositoryModalEvents(async (repositoryName) => {
+      const [owner, repository] = repositoryName.split("/");
+
+      const repositoryData = await fetchRepository(
+        owner,
+        repository,
+      );
+
+      setRepository(repositoryData);
+      render();
     });
   }
 

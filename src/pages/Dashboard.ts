@@ -4,24 +4,19 @@ import { renderRepositoryCard } from "../components/RepositoryCard";
 import { renderAddRepositoryModal } from "../components/AddRepositoryModal";
 import type { Repository } from "../types/repository";
 
-const repository: Repository = {
-  name: "repo-health",
-  owner: "Abdev314",
-  description:
-    "A tool for checking GitHub repository activity, health and development signals.",
-  language: "Python",
-  stars: 12,
-  forks: 2,
-  issues: 3,
-  pullRequests: 1,
-  health: 85,
-  activity: "active",
-  ciStatus: "passing",
-  latestRelease: "v1.2.0",
-  defaultBranch: "main",
-};
+interface DashboardProps {
+  repository: Repository | null;
+}
 
-export function renderDashboard(): string {
+export function renderDashboard({
+  repository,
+}: DashboardProps): string {
+  const repositories = repository ? 1 : 0;
+  const activeRepositories =
+    repository?.activity === "active" ? 1 : 0;
+  const averageHealth = repository?.health ?? 0;
+  const openIssues = repository?.issues ?? 0;
+
   return `
     <div class="min-h-screen bg-[#f8f8f6]">
       ${renderHeader({
@@ -34,25 +29,25 @@ export function renderDashboard(): string {
         <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           ${renderStatCard({
             label: "Repositories",
-            value: 1,
+            value: repositories,
             description: "Currently monitored",
           })}
 
           ${renderStatCard({
             label: "Active",
-            value: 1,
+            value: activeRepositories,
             description: "Active in the last 90 days",
           })}
 
           ${renderStatCard({
             label: "Average health",
-            value: 85,
+            value: averageHealth,
             description: "Across all repositories",
           })}
 
           ${renderStatCard({
             label: "Open issues",
-            value: 3,
+            value: openIssues,
             description: "Across monitored repositories",
           })}
         </section>
@@ -70,15 +65,25 @@ export function renderDashboard(): string {
             </div>
           </div>
 
-          ${renderRepositoryCard({ repository })}
+          ${
+            repository
+              ? renderRepositoryCard({ repository })
+              : `
+                <div class="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center">
+                  <h3 class="text-sm font-semibold text-slate-700">
+                    No repositories yet
+                  </h3>
+
+                  <p class="mt-1 text-sm text-slate-400">
+                    Add a GitHub repository to start monitoring it.
+                  </p>
+                </div>
+              `
+          }
         </section>
       </main>
 
       ${renderAddRepositoryModal()}
     </div>
   `;
-}
-
-export function getDashboardRepository(): Repository {
-  return repository;
 }

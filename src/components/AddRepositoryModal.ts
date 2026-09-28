@@ -109,7 +109,7 @@ export function closeAddRepositoryModal(): void {
 }
 
 export function attachAddRepositoryModalEvents(
-  onRepositoryAdded: (repository: string) => void,
+  onRepositoryAdded: (repository: string) => Promise<void>,
 ): void {
   document
     .querySelector("#close-modal-button")
@@ -125,7 +125,7 @@ export function attachAddRepositoryModalEvents(
 
   document
     .querySelector("#add-repository-form")
-    ?.addEventListener("submit", (event) => {
+    ?.addEventListener("submit", async (event) => {
       event.preventDefault();
 
       const input = document.querySelector<HTMLInputElement>(
@@ -136,7 +136,12 @@ export function attachAddRepositoryModalEvents(
         "#repository-input-error",
       );
 
-      if (!input || !error) {
+      const submitButton =
+        document.querySelector<HTMLButtonElement>(
+          '#add-repository-form button[type="submit"]',
+        );
+
+      if (!input || !error || !submitButton) {
         return;
       }
 
@@ -144,14 +149,36 @@ export function attachAddRepositoryModalEvents(
       const valid = /^[^/\s]+\/[^/\s]+$/.test(repository);
 
       if (!valid) {
+        error.textContent =
+          "Please enter a repository in owner/repository format.";
+
         error.classList.remove("hidden");
         input.focus();
+
         return;
       }
 
       error.classList.add("hidden");
-      onRepositoryAdded(repository);
-      input.value = "";
-      closeAddRepositoryModal();
+
+      submitButton.disabled = true;
+      submitButton.textContent = "Checking...";
+
+      try {
+        await onRepositoryAdded(repository);
+
+        input.value = "";
+        closeAddRepositoryModal();
+      } catch (requestError) {
+        console.error(requestError);
+
+        error.textContent =
+          "Repository could not be found. Please check the name and try again.";
+
+        error.classList.remove("hidden");
+        input.focus();
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = "Add repository";
+      }
     });
 }
