@@ -8,3 +8,5 @@ dist/
 .DS_Store
 
 cli/tk.txt
+__pycache__/
+*.pyc
