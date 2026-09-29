@@ -1,3 +1,5 @@
+import { icon } from "./icons";
+
 interface HeaderProps {
   title: string;
   subtitle: string;
@@ -25,10 +27,10 @@ export function renderHeader({
         showAddButton
           ? `
             <button
-              id="add-repository-button"
-              class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98]"
+              data-action="open-add-modal"
+              class="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 active:scale-[0.98]"
             >
-              <span class="text-base">+</span>
+              ${icon("plus", "h-4 w-4")}
               Add repository
             </button>
           `

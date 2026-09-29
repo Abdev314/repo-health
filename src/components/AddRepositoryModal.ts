@@ -1,3 +1,5 @@
+import { icon } from "./icons";
+
 export function renderAddRepositoryModal(): string {
   return `
     <div
@@ -9,7 +11,7 @@ export function renderAddRepositoryModal(): string {
         class="absolute inset-0"
       ></div>
 
-      <div class="relative w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xl">
+      <div class="modal-panel relative w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xl">
         <div class="flex items-start justify-between gap-4">
           <div>
             <h2 class="text-lg font-bold text-slate-900">
@@ -23,10 +25,10 @@ export function renderAddRepositoryModal(): string {
 
           <button
             id="close-modal-button"
-            class="flex h-8 w-8 items-center justify-center rounded-lg text-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
             aria-label="Close"
           >
-            ×
+            ${icon("x", "h-4 w-4")}
           </button>
         </div>
 
@@ -44,15 +46,14 @@ export function renderAddRepositoryModal(): string {
             type="text"
             placeholder="owner/repository"
             autocomplete="off"
+            spellcheck="false"
             class="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-100"
           />
 
           <p
             id="repository-input-error"
-            class="mt-2 hidden text-xs font-medium text-red-500"
-          >
-            Please enter a repository in owner/repository format.
-          </p>
+            class="mt-2 hidden text-xs font-medium text-rose-500"
+          ></p>
 
           <div class="mt-6 flex justify-end gap-3">
             <button
@@ -65,9 +66,9 @@ export function renderAddRepositoryModal(): string {
 
             <button
               type="submit"
-              class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-[0.98]"
+              class="inline-flex min-w-32 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Add repository
+              <span id="add-submit-label">Add repository</span>
             </button>
           </div>
         </form>
@@ -141,7 +142,11 @@ export function attachAddRepositoryModalEvents(
           '#add-repository-form button[type="submit"]',
         );
 
-      if (!input || !error || !submitButton) {
+      const submitLabel = document.querySelector<HTMLElement>(
+        "#add-submit-label",
+      );
+
+      if (!input || !error || !submitButton || !submitLabel) {
         return;
       }
 
@@ -161,7 +166,7 @@ export function attachAddRepositoryModalEvents(
       error.classList.add("hidden");
 
       submitButton.disabled = true;
-      submitButton.textContent = "Checking...";
+      submitLabel.textContent = "Checking...";
 
       try {
         await onRepositoryAdded(repository);
@@ -169,16 +174,16 @@ export function attachAddRepositoryModalEvents(
         input.value = "";
         closeAddRepositoryModal();
       } catch (requestError) {
-        console.error(requestError);
-
         error.textContent =
-          "Repository could not be found. Please check the name and try again.";
+          requestError instanceof Error && requestError.message
+            ? requestError.message
+            : "Repository could not be found. Please check the name and try again.";
 
         error.classList.remove("hidden");
         input.focus();
       } finally {
         submitButton.disabled = false;
-        submitButton.textContent = "Add repository";
+        submitLabel.textContent = "Add repository";
       }
     });
 }

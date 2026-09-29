@@ -4,6 +4,18 @@ interface HealthBreakdownProps {
   metrics: HealthMetric[];
 }
 
+function barColor(ratio: number): string {
+  if (ratio >= 0.75) {
+    return "bg-emerald-500";
+  }
+
+  if (ratio >= 0.4) {
+    return "bg-amber-500";
+  }
+
+  return "bg-rose-500";
+}
+
 export function renderHealthBreakdown({
   metrics,
 }: HealthBreakdownProps): string {
@@ -21,8 +33,10 @@ export function renderHealthBreakdown({
 
       <div class="mt-6 space-y-5">
         ${metrics
-          .map(
-            (metric) => `
+          .map((metric) => {
+            const ratio = metric.maxScore > 0 ? metric.score / metric.maxScore : 0;
+
+            return `
               <div>
                 <div class="mb-2 flex items-center justify-between gap-4">
                   <div>
@@ -42,13 +56,13 @@ export function renderHealthBreakdown({
 
                 <div class="h-2 overflow-hidden rounded-full bg-slate-100">
                   <div
-                    class="h-full rounded-full bg-slate-800 transition-all"
-                    style="width: ${(metric.score / metric.maxScore) * 100}%"
+                    class="h-full rounded-full ${barColor(ratio)} transition-all"
+                    style="width: ${ratio * 100}%"
                   ></div>
                 </div>
               </div>
-            `,
-          )
+            `;
+          })
           .join("")}
       </div>
     </section>

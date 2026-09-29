@@ -1,235 +1,258 @@
-import { renderHeader } from "../components/Header";
 import { renderHealthBreakdown } from "../components/HealthBreakdown";
 import { renderActivityList } from "../components/ActivityList";
-import type {
-  ActivityItem,
-  HealthMetric,
-  Repository,
-} from "../types/repository";
+import { icon } from "../components/icons";
+import {
+  ACTIVITY_STATUS_STYLES,
+  CI_STATUS_STYLES,
+  HEALTH_STATUS_STYLES,
+  escapeHtml,
+  formatNumber,
+  formatRelativeTime,
+  healthStatus,
+} from "../utils/format";
+import type { Repository } from "../types/repository";
 
 interface RepositoryDetailsProps {
   repository: Repository;
+  isRefreshing: boolean;
+  isConfirmingRemove: boolean;
 }
 
-const healthMetrics: HealthMetric[] = [
-  {
-    label: "Activity",
-    score: 20,
-    maxScore: 20,
-    description: "Recent repository activity",
-  },
-  {
-    label: "Issues",
-    score: 20,
-    maxScore: 20,
-    description: "Number of open issues",
-  },
-  {
-    label: "Pull requests",
-    score: 10,
-    maxScore: 20,
-    description: "Open pull requests",
-  },
-  {
-    label: "CI status",
-    score: 20,
-    maxScore: 20,
-    description: "Latest workflow result",
-  },
-  {
-    label: "Release",
-    score: 20,
-    maxScore: 20,
-    description: "Latest published release",
-  },
-];
+function metricValue(
+  repository: Repository,
+  label: string,
+): string | null {
+  return (
+    repository.healthBreakdown.find((metric) => metric.label === label)
+      ?.description ?? null
+  );
+}
 
-const activities: ActivityItem[] = [
-  {
-    title: "Repository updated",
-    description: "New development activity was detected.",
-    time: "2 hours ago",
-  },
-  {
-    title: "CI passed",
-    description: "The latest GitHub Actions workflow completed successfully.",
-    time: "5 hours ago",
-  },
-  {
-    title: "Pull request opened",
-    description: "A new pull request is currently open.",
-    time: "1 day ago",
-  },
-];
+function metricRow(label: string, valueHtml: string): string {
+  return `
+    <div class="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+      <span class="text-sm text-slate-500">${label}</span>
+      <span class="text-sm font-semibold text-slate-700">${valueHtml}</span>
+    </div>
+  `;
+}
 
 export function renderRepositoryDetails({
   repository,
+  isRefreshing,
+  isConfirmingRemove,
 }: RepositoryDetailsProps): string {
-  return `
-    <div class="min-h-screen bg-[#f8f8f6]">
-      ${renderHeader({
-        title: "Repository details",
-        subtitle: `${repository.owner} / ${repository.name}`,
-      })}
+  const fullName = `${repository.owner}/${repository.name}`;
+  const description = repository.description || "No description provided.";
+  const status = HEALTH_STATUS_STYLES[healthStatus(repository.health)];
+  const activity = ACTIVITY_STATUS_STYLES[repository.activity];
+  const ci = CI_STATUS_STYLES[repository.ciStatus];
+  const activityDescription =
+    metricValue(repository, "Activity") ?? "No commit data available";
 
-      <main class="space-y-6 p-6 lg:p-8">
+  const actions = isConfirmingRemove
+    ? `
+      <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3">
+        <p class="text-sm font-medium text-rose-700">
+          Remove ${escapeHtml(fullName)} from monitoring?
+        </p>
+
+        <div class="flex gap-2">
+          <button
+            data-action="cancel-remove"
+            data-repository-id="${repository.id}"
+            class="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-white hover:text-slate-700"
+          >
+            Cancel
+          </button>
+
+          <button
+            data-action="confirm-remove"
+            data-repository-id="${repository.id}"
+            class="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-500"
+          >
+            Remove
+          </button>
+        </div>
+      </div>
+    `
+    : `
+      <div class="flex flex-wrap items-center gap-3">
         <button
-          id="back-to-dashboard"
-          class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-slate-900"
+          data-action="refresh"
+          data-repository-id="${repository.id}"
+          ${isRefreshing ? "disabled" : ""}
+          class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <span>←</span>
-          Back to dashboard
+          ${icon("refresh", `h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`)}
+          ${isRefreshing ? "Refreshing..." : "Refresh"}
         </button>
 
+        <button
+          data-action="remove"
+          data-repository-id="${repository.id}"
+          class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+        >
+          ${icon("trash", "h-4 w-4")}
+          Remove
+        </button>
+      </div>
+    `;
+
+  return `
+    <div>
+      <header class="border-b border-slate-200/70 bg-white/50 px-6 py-4 lg:px-8">
+        <button
+          data-action="back"
+          class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-slate-900"
+        >
+          ${icon("arrow-left", "h-4 w-4")}
+          Back
+        </button>
+      </header>
+
+      <main class="space-y-4 p-6 lg:space-y-5 lg:p-8">
         <section class="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
           <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${status.badge}">
+                  <span class="h-1.5 w-1.5 rounded-full ${status.dot}"></span>
+                  ${status.label} · ${repository.health}/100
+                </span>
 
-                <span class="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                  ${repository.activity}
+                <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${activity.text} bg-slate-50">
+                  <span class="h-1.5 w-1.5 rounded-full ${activity.dot}"></span>
+                  ${activity.label}
+                </span>
+
+                <span class="rounded-full bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-500">
+                  ${escapeHtml(repository.language)}
                 </span>
               </div>
 
-              <h2 class="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-                ${repository.owner} / ${repository.name}
+              <h2 class="mt-3 text-2xl font-bold tracking-tight text-slate-900">
+                ${escapeHtml(fullName)}
               </h2>
 
               <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                ${repository.description}
+                ${escapeHtml(description)}
+              </p>
+
+              <p class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+                <span class="inline-flex items-center gap-1.5">
+                  ${icon("star", "h-3.5 w-3.5")}
+                  ${formatNumber(repository.stars)} stars
+                </span>
+
+                <span class="inline-flex items-center gap-1.5">
+                  ${icon("fork", "h-3.5 w-3.5")}
+                  ${formatNumber(repository.forks)} forks
+                </span>
+
+                <span>
+                  Default branch <span class="font-semibold text-slate-500">${escapeHtml(repository.defaultBranch)}</span>
+                </span>
+
+                <span>
+                  Refreshed ${formatRelativeTime(repository.lastRefreshed)}
+                </span>
               </p>
             </div>
 
             <a
-              href="https://github.com/${repository.owner}/${repository.name}"
+              href="https://github.com/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.name)}"
               target="_blank"
               rel="noreferrer"
-              class="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
+              ${icon("external", "h-4 w-4")}
               Open on GitHub
             </a>
           </div>
-
-          <div class="mt-6 grid grid-cols-2 gap-4 border-t border-slate-100 pt-5 sm:grid-cols-4">
-            <div>
-              <p class="text-xs text-slate-400">Language</p>
-              <p class="mt-1 text-sm font-semibold text-slate-700">
-                ${repository.language}
-              </p>
-            </div>
-
-            <div>
-              <p class="text-xs text-slate-400">Stars</p>
-              <p class="mt-1 text-sm font-semibold text-slate-700">
-                ${repository.stars}
-              </p>
-            </div>
-
-            <div>
-              <p class="text-xs text-slate-400">Forks</p>
-              <p class="mt-1 text-sm font-semibold text-slate-700">
-                ${repository.forks}
-              </p>
-            </div>
-
-            <div>
-              <p class="text-xs text-slate-400">Default branch</p>
-              <p class="mt-1 text-sm font-semibold text-slate-700">
-                ${repository.defaultBranch}
-              </p>
-            </div>
-          </div>
         </section>
 
-        <section class="grid gap-4 md:grid-cols-3">
-          <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm md:col-span-2">
-            <p class="text-sm font-medium text-slate-500">
-              Overall health
+        ${actions}
+
+        <div class="grid gap-4 lg:grid-cols-2">
+          <section class="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+            <h2 class="text-sm font-bold text-slate-900">
+              Health summary
+            </h2>
+
+            <p class="mt-0.5 text-xs text-slate-400">
+              Based on activity, issues, pull requests, CI and releases.
             </p>
 
-            <div class="mt-3 flex items-end gap-2">
-              <span class="text-4xl font-bold tracking-tight text-slate-900">
+            <div class="mt-4 flex items-end gap-2">
+              <span class="text-4xl font-bold tracking-tight ${status.text}">
                 ${repository.health}
               </span>
 
               <span class="mb-1 text-sm font-medium text-slate-400">
-                /100
+                /100 · ${status.label}
               </span>
             </div>
 
             <div class="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
               <div
-                class="h-full rounded-full bg-slate-800"
+                class="h-full rounded-full ${status.bar}"
                 style="width: ${repository.health}%"
               ></div>
             </div>
-          </div>
+          </section>
 
-          <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <p class="text-sm font-medium text-slate-500">
-              CI status
-            </p>
-
-            <div class="mt-4 flex items-center gap-2">
-              <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
-
-              <span class="text-lg font-bold capitalize text-slate-900">
-                ${repository.ciStatus}
-              </span>
-            </div>
-
-            <p class="mt-2 text-xs leading-5 text-slate-400">
-              Latest workflow result
-            </p>
-          </div>
-        </section>
-
-        ${renderHealthBreakdown({
-          metrics: healthMetrics,
-        })}
-
-        <section class="grid gap-4 md:grid-cols-2">
-          <div class="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
-            <h2 class="text-base font-bold text-slate-900">
-              Repository metrics
+          <section class="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+            <h2 class="text-sm font-bold text-slate-900">
+              Development activity
             </h2>
 
-            <div class="mt-5 space-y-4">
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-slate-500">Open issues</span>
-                <span class="text-sm font-semibold text-slate-700">
-                  ${repository.issues}
-                </span>
-              </div>
+            <div class="mt-3 divide-y divide-slate-100">
+              ${metricRow(
+                "Activity",
+                `<span class="inline-flex items-center gap-1.5 capitalize ${activity.text}">
+                  <span class="h-1.5 w-1.5 rounded-full ${activity.dot}"></span>
+                  ${activity.label}
+                </span>`,
+              )}
 
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-slate-500">Pull requests</span>
-                <span class="text-sm font-semibold text-slate-700">
-                  ${repository.pullRequests}
-                </span>
-              </div>
+              ${metricRow("Last commit", escapeHtml(activityDescription))}
 
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-slate-500">Latest release</span>
-                <span class="text-sm font-semibold text-slate-700">
-                  ${repository.latestRelease ?? "None"}
-                </span>
-              </div>
+              ${metricRow(
+                "Open issues",
+                formatNumber(repository.issues),
+              )}
 
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-slate-500">Default branch</span>
-                <span class="text-sm font-semibold text-slate-700">
-                  ${repository.defaultBranch}
-                </span>
-              </div>
+              ${metricRow(
+                "Pull requests",
+                formatNumber(repository.pullRequests),
+              )}
+
+              ${metricRow(
+                "CI status",
+                `<span class="inline-flex items-center gap-1.5 ${ci.text}">
+                  <span class="h-1.5 w-1.5 rounded-full ${ci.dot}"></span>
+                  ${ci.label}
+                </span>`,
+              )}
+
+              ${metricRow(
+                "Latest release",
+                repository.latestRelease
+                  ? escapeHtml(repository.latestRelease)
+                  : `<span class="text-slate-400">None</span>`,
+              )}
             </div>
-          </div>
+          </section>
+        </div>
 
-          ${renderActivityList({
-            activities,
-          })}
-        </section>
+        ${renderHealthBreakdown({
+          metrics: repository.healthBreakdown,
+        })}
+
+        ${renderActivityList({
+          activities: repository.recentActivity,
+        })}
       </main>
     </div>
   `;
