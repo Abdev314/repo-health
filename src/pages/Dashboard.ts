@@ -4,7 +4,6 @@ import { renderSectionCard } from "../components/SectionCard";
 import { renderRepositoryCard } from "../components/RepositoryCard";
 import { renderEmptyState } from "../components/EmptyState";
 import { icon } from "../components/icons";
-import type { IconName } from "../components/icons";
 import {
   HEALTH_STATUS_STYLES,
   escapeHtml,
@@ -19,33 +18,10 @@ interface DashboardProps {
   repositories: Repository[];
 }
 
-interface AttentionItem {
-  iconName: IconName;
-  tone: "rose" | "amber" | "slate";
-  message: string;
-  repositoryId: string;
-}
-
-const TONE_STYLES: Record<AttentionItem["tone"], string> = {
-  rose: "bg-rose-50 text-rose-500",
-  amber: "bg-amber-50 text-amber-500",
-  slate: "bg-slate-100 text-slate-400",
-};
-
 const STATUS_ORDER: HealthStatus[] = ["healthy", "warning", "at-risk"];
 
 function fullName(repository: Repository): string {
   return `${repository.owner}/${repository.name}`;
-}
-
-function metricDescription(
-  repository: Repository,
-  label: string,
-): string | null {
-  return (
-    repository.healthBreakdown.find((metric) => metric.label === label)
-      ?.description ?? null
-  );
 }
 
 function latestActivityTime(repository: Repository): string | null {
@@ -57,110 +33,6 @@ function latestActivityTime(repository: Repository): string | null {
     (latest, item) => (item.time > latest ? item.time : latest),
     repository.recentActivity[0].time,
   );
-}
-
-function buildAttentionItems(repositories: Repository[]): AttentionItem[] {
-  const items: AttentionItem[] = [];
-
-  for (const repository of repositories) {
-    if (repository.ciStatus === "failing") {
-      items.push({
-        iconName: "x-circle",
-        tone: "rose",
-        message: "CI is failing on the latest workflow run",
-        repositoryId: repository.id,
-      });
-    }
-  }
-
-  for (const repository of repositories) {
-    if (repository.activity === "inactive") {
-      items.push({
-        iconName: "clock",
-        tone: "amber",
-        message:
-          metricDescription(repository, "Activity") ??
-          "No commits in the last 90 days",
-        repositoryId: repository.id,
-      });
-    }
-  }
-
-  const issueHeavy = [...repositories]
-    .filter((repository) => repository.issues > 5)
-    .sort((a, b) => b.issues - a.issues)
-    .slice(0, 3);
-
-  for (const repository of issueHeavy) {
-    items.push({
-      iconName: "alert",
-      tone: "amber",
-      message: `${formatNumber(repository.issues)} open issues`,
-      repositoryId: repository.id,
-    });
-  }
-
-  for (const repository of repositories) {
-    if (repository.ciStatus === "unknown") {
-      items.push({
-        iconName: "alert",
-        tone: "slate",
-        message: "CI status unknown — no recent workflow runs",
-        repositoryId: repository.id,
-      });
-    }
-  }
-
-  return items;
-}
-
-function renderAttentionList(items: AttentionItem[], repositories: Repository[]): string {
-  if (!items.length) {
-    return `
-      <div class="py-8 text-center">
-        <p class="text-sm font-medium text-slate-500">Nothing needs attention</p>
-        <p class="mt-1 text-xs text-slate-400">All monitored repositories look healthy.</p>
-      </div>
-    `;
-  }
-
-  const names = new Map(
-    repositories.map((repository) => [repository.id, fullName(repository)]),
-  );
-
-  return `
-    <div class="space-y-1">
-      ${items
-        .map(
-          (item) => `
-            <button
-              data-action="view"
-              data-repository-id="${item.repositoryId}"
-              class="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-slate-50"
-            >
-              <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${TONE_STYLES[item.tone]}">
-                ${icon(item.iconName, "h-3.5 w-3.5")}
-              </span>
-
-              <span class="min-w-0">
-                <span class="block truncate text-sm font-semibold text-slate-800">
-                  ${escapeHtml(names.get(item.repositoryId) ?? "Repository")}
-                </span>
-
-                <span class="mt-0.5 block text-xs leading-5 text-slate-400">
-                  ${escapeHtml(item.message)}
-                </span>
-              </span>
-
-              <span class="ml-auto mt-1 shrink-0 text-slate-300">
-                ${icon("chevron-right", "h-4 w-4")}
-              </span>
-            </button>
-          `,
-        )
-        .join("")}
-    </div>
-  `;
 }
 
 function renderRecentActivity(repositories: Repository[]): string {
@@ -326,7 +198,6 @@ export function renderDashboard({
     (repository) => repository.ciStatus === "failing",
   ).length;
   const averageStatus = HEALTH_STATUS_STYLES[healthStatus(averageHealth)];
-  const attentionItems = buildAttentionItems(repositories).slice(0, 6);
   const preview = repositories.slice(0, 3);
 
   return `
@@ -377,17 +248,11 @@ export function renderDashboard({
           })}
         </section>
 
-        <div class="grid gap-4 lg:grid-cols-3">
+        <div class="grid gap-4 lg:grid-cols-2">
           ${renderSectionCard({
             title: "Health overview",
             subtitle: "Distribution of repository health",
             bodyHtml: renderHealthOverview(repositories),
-          })}
-
-          ${renderSectionCard({
-            title: "Needs attention",
-            subtitle: "Repositories to look at first",
-            bodyHtml: renderAttentionList(attentionItems, repositories),
           })}
 
           ${renderSectionCard({

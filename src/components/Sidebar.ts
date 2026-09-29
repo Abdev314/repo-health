@@ -79,7 +79,7 @@ export function renderSidebar({
 
 export function renderMobileBar(): string {
   return `
-    <div class="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">
+    <div class="sticky top-0 z-30 flex items-center border-b border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">
       <div class="flex items-center gap-2.5">
         <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
           ${icon("heart", "h-4 w-4")}
@@ -87,14 +87,6 @@ export function renderMobileBar(): string {
 
         <p class="text-sm font-bold text-slate-900">Repo Health</p>
       </div>
-
-      <button
-        data-action="open-add-modal"
-        class="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-500"
-      >
-        ${icon("plus", "h-3.5 w-3.5")}
-        Add repository
-      </button>
     </div>
   `;
 }
