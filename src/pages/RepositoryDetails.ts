@@ -181,7 +181,7 @@ export function renderRepositoryDetails({
             </h2>
 
             <p class="mt-0.5 text-xs text-slate-400">
-              Based on activity, issues, pull requests, CI and releases.
+              Based on activity, issues, pull requests, CI, releases and contributor concentration.
             </p>
 
             <div class="mt-4 flex items-end gap-2">
