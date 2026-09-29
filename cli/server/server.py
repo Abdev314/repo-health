@@ -1,209 +1,62 @@
-import os
-from pathlib import Path
+"""Repo Health web API.
 
-import requests
+Run with:  python cli/server/server.py
+
+Serves the normalized repository data consumed by the TypeScript
+frontend. The GitHub token stays on the server and is never part of
+any response.
+"""
+
+import re
+
 from flask import Flask, jsonify
 from flask_cors import CORS
 
+from github_client import GitHubError
+from repositories import build_repository_payload
 
 app = Flask(__name__)
 CORS(app)
 
-GITHUB_API_URL = "https://api.github.com"
+OWNER_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]{0,38}$")
+REPOSITORY_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{1,100}$")
 
 
-def get_github_token():
-    token = os.getenv("GITHUB_TOKEN")
-
-    if token:
-        return token
-
-    token_file = (
-        Path(__file__).resolve().parent.parent
-        / "cli"
-        / "tk.txt"
+def validate_repository_name(owner, repository):
+    return bool(
+        OWNER_PATTERN.match(owner) and REPOSITORY_PATTERN.match(repository)
     )
 
-    if token_file.exists():
-        token = token_file.read_text().strip()
 
-    if not token:
-        raise RuntimeError("GITHUB_TOKEN is not configured")
-
-    return token
-
-
-def github_request(endpoint):
-    token = get_github_token()
-
-    response = requests.get(
-        f"{GITHUB_API_URL}{endpoint}",
-        headers={
-            "Accept": "application/vnd.github+json",
-            "Authorization": f"Bearer {token}",
-        },
-        timeout=10,
-    )
-
-    if not response.ok:
-        raise RuntimeError(
-            f"GitHub API request failed: {response.status_code}"
-        )
-
-    return response.json()
-
-def get_latest_commit(owner, repository):
-    commits = github_request(
-        f"/repos/{owner}/{repository}/commits"
-        "?per_page=1"
-    )
-
-    if not commits:
-        return None
-
-    commit = commits[0]["commit"]
-
-    return {
-        "date": commit["author"]["date"],
-        "message": commit["message"],
-    }
-
-def get_activity(updated_at):
-    from datetime import datetime, timezone
-
-    updated = datetime.fromisoformat(
-        updated_at.replace("Z", "+00:00")
-    )
-
-    days_since_update = (
-        datetime.now(timezone.utc) - updated
-    ).days
-
-    return "active" if days_since_update <= 90 else "inactive"
-
-
-def calculate_health(
-    activity,
-    issues,
-    pull_requests,
-    ci_status,
-    latest_release,
-):
-    score = 0
-
-    if activity == "active":
-        score += 20
-
-    if issues == 0:
-        score += 20
-    elif issues <= 5:
-        score += 10
-
-    if pull_requests == 0:
-        score += 20
-    elif pull_requests <= 3:
-        score += 10
-
-    if ci_status == "passing":
-        score += 20
-
-    if latest_release:
-        score += 20
-
-    return score
+@app.get("/api/health")
+def health_check():
+    return jsonify({"status": "ok"})
 
 
 @app.get("/api/repositories/<owner>/<repository>")
 def get_repository(owner, repository):
+    if not validate_repository_name(owner, repository):
+        return jsonify(
+            {"error": "Invalid repository name. Use owner/repository."}
+        ), 400
+
     try:
-        data = github_request(
-            f"/repos/{owner}/{repository}"
-        )
+        payload = build_repository_payload(owner, repository)
+    except GitHubError as error:
+        return jsonify({"error": str(error)}), error.status
 
-        pulls = github_request(
-            f"/repos/{owner}/{repository}/pulls"
-            "?state=open&per_page=100"
-        )
+    return jsonify(payload)
 
-        try:
-            release = github_request(
-                f"/repos/{owner}/{repository}/releases/latest"
-            )
-            latest_release = release["tag_name"]
-        except RuntimeError:
-            latest_release = None
 
-        try:
-            workflows = github_request(
-                f"/repos/{owner}/{repository}/actions/runs"
-                "?per_page=1"
-            )
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({"error": "Endpoint not found."}), 404
 
-            runs = workflows.get("workflow_runs", [])
 
-            if not runs:
-                ci_status = "unknown"
-            elif runs[0]["conclusion"] == "success":
-                ci_status = "passing"
-            elif runs[0]["conclusion"] in {
-                "failure",
-                "cancelled",
-            }:
-                ci_status = "failing"
-            else:
-                ci_status = "unknown"
-
-        except RuntimeError:
-            ci_status = "unknown"
-
-        # activity = get_activity(data["updated_at"])
-
-        latest_commit = get_latest_commit(
-            owner,
-            repository,
-        )
-
-        activity = (
-            get_activity(latest_commit["date"])
-            if latest_commit
-            else "inactive"
-        )
-
-        pull_request_count = len(pulls)
-
-        health = calculate_health(
-            activity,
-            data["open_issues_count"],
-            pull_request_count,
-            ci_status,
-            latest_release,
-        )
-
-        return jsonify({
-            "name": data["name"],
-            "owner": data["owner"]["login"],
-            "description": data["description"] or "",
-            "language": data["language"] or "Unknown",
-            "stars": data["stargazers_count"],
-            "forks": data["forks_count"],
-            "issues": data["open_issues_count"],
-            "pullRequests": pull_request_count,
-            "health": health,
-            "activity": activity,
-            "ciStatus": ci_status,
-            "latestRelease": latest_release,
-            "defaultBranch": data["default_branch"],
-        })
-
-    except RuntimeError as error:
-        return jsonify({
-            "error": str(error),
-        }), 502
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({"error": "Unexpected server error."}), 500
 
 
 if __name__ == "__main__":
-    app.run(
-        host="127.0.0.1",
-        port=5000,
-        debug=False,
-    )
+    app.run(host="127.0.0.1", port=5000, debug=False)
