@@ -1,6 +1,13 @@
-export type View = "dashboard" | "repository";
+export type View = "dashboard" | "repositories" | "repository";
+
+export type ActivityType = "commit" | "release" | "ci";
+
+export type ActivityStatus = "active" | "inactive";
+
+export type CiStatus = "passing" | "failing" | "unknown";
 
 export interface Repository {
+  id: string;
   name: string;
   owner: string;
   description: string;
@@ -10,10 +17,13 @@ export interface Repository {
   issues: number;
   pullRequests: number;
   health: number;
-  activity: "active" | "inactive";
-  ciStatus: "passing" | "failing" | "unknown";
+  healthBreakdown: HealthMetric[];
+  activity: ActivityStatus;
+  ciStatus: CiStatus;
   latestRelease: string | null;
   defaultBranch: string;
+  recentActivity: ActivityItem[];
+  lastRefreshed: string;
 }
 
 export interface HealthMetric {
@@ -24,6 +34,7 @@ export interface HealthMetric {
 }
 
 export interface ActivityItem {
+  type: ActivityType;
   title: string;
   description: string;
   time: string;

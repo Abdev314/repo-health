@@ -1,15 +1,38 @@
 import type { Repository } from "../types/repository";
 
-const API_URL = "http://127.0.0.1:5000";
+const API_URL: string =
+  (import.meta.env.VITE_API_URL as string | undefined) ??
+  "http://127.0.0.1:5000";
+
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
 
 async function apiRequest<T>(endpoint: string): Promise<T> {
-  const response = await fetch(`${API_URL}${endpoint}`);
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_URL}${endpoint}`);
+  } catch {
+    throw new ApiError(
+      "Could not reach the Repo Health server. Is the Flask backend running?",
+      0,
+    );
+  }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => null);
+    const error = (await response.json().catch(() => null)) as {
+      error?: string;
+    } | null;
 
-    throw new Error(
-      error?.error ?? `API request failed: ${response.status}`,
+    throw new ApiError(
+      error?.error ?? "The server returned an unexpected error.",
+      response.status,
     );
   }
 
@@ -21,6 +44,6 @@ export async function fetchRepository(
   repository: string,
 ): Promise<Repository> {
   return apiRequest<Repository>(
-    `/api/repositories/${owner}/${repository}`,
+    `/api/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}`,
   );
 }
