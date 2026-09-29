@@ -24,6 +24,19 @@ export interface Repository {
   defaultBranch: string;
   recentActivity: ActivityItem[];
   lastRefreshed: string;
+  busFactor?: number | null;
+  topContributorShare?: number | null;
+  triage?: TriageSignals;
+}
+
+export interface TriageSignals {
+  openItemCount: number;
+  medianAgeDays: number;
+  stale30Percent: number;
+  stale90Percent: number;
+  oldestAgeDays: number;
+  oldestItemType: "issue" | "pull_request" | null;
+  oldestItemTitle: string | null;
 }
 
 export interface HealthMetric {

@@ -10,7 +10,7 @@ import {
   formatRelativeTime,
   healthStatus,
 } from "../utils/format";
-import type { Repository } from "../types/repository";
+import type { Repository, TriageSignals } from "../types/repository";
 
 interface RepositoryDetailsProps {
   repository: Repository;
@@ -34,6 +34,85 @@ function metricRow(label: string, valueHtml: string): string {
       <span class="text-sm text-slate-500">${label}</span>
       <span class="text-sm font-semibold text-slate-700">${valueHtml}</span>
     </div>
+  `;
+}
+
+function renderTriageSection(triage: TriageSignals | null): string {
+  let body: string;
+
+  if (!triage) {
+    body = `
+      <p class="mt-4 text-sm text-slate-400">
+        Triage data unavailable. Refresh the repository to load it.
+      </p>
+    `;
+  } else if (triage.openItemCount === 0) {
+    body = `
+      <p class="mt-4 text-sm text-slate-500">
+        No open issues or pull requests.
+      </p>
+    `;
+  } else {
+    const oldestType =
+      triage.oldestItemType === "pull_request" ? "Pull request" : "Issue";
+
+    body = `
+      <p class="mt-4 text-2xl font-bold tracking-tight text-slate-900">
+        ${formatNumber(triage.openItemCount)}
+        <span class="text-sm font-medium text-slate-400">open items</span>
+      </p>
+
+      <div class="mt-4 grid grid-cols-3 gap-3 border-t border-slate-100 pt-4 text-center">
+        <div>
+          <p class="text-xs text-slate-400">Median age</p>
+          <p class="mt-1 text-sm font-semibold text-slate-700">
+            ${triage.medianAgeDays} days
+          </p>
+        </div>
+
+        <div>
+          <p class="text-xs text-slate-400">Older than 30 days</p>
+          <p class="mt-1 text-sm font-semibold text-slate-700">
+            ${triage.stale30Percent}%
+          </p>
+        </div>
+
+        <div>
+          <p class="text-xs text-slate-400">Older than 90 days</p>
+          <p class="mt-1 text-sm font-semibold text-slate-700">
+            ${triage.stale90Percent}%
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-4 border-t border-slate-100 pt-4">
+        <p class="text-xs text-slate-400">Oldest open item</p>
+
+        <p class="mt-1 text-sm font-semibold text-slate-700">
+          ${triage.oldestAgeDays} days · ${oldestType}
+        </p>
+
+        ${
+          triage.oldestItemTitle
+            ? `<p class="mt-0.5 truncate text-xs text-slate-400" title="${escapeHtml(triage.oldestItemTitle)}">${escapeHtml(triage.oldestItemTitle)}</p>`
+            : ""
+        }
+      </div>
+    `;
+  }
+
+  return `
+    <section class="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+      <h2 class="text-sm font-bold text-slate-900">
+        Triage
+      </h2>
+
+      <p class="mt-0.5 text-xs text-slate-400">
+        Age of open issues and pull requests.
+      </p>
+
+      ${body}
+    </section>
   `;
 }
 
@@ -181,7 +260,7 @@ export function renderRepositoryDetails({
             </h2>
 
             <p class="mt-0.5 text-xs text-slate-400">
-              Based on activity, issues, pull requests, CI, releases and contributor concentration.
+              Based on activity, issues, pull requests, CI, releases, contributor concentration and triage age.
             </p>
 
             <div class="mt-4 flex items-end gap-2">
@@ -244,6 +323,8 @@ export function renderRepositoryDetails({
               )}
             </div>
           </section>
+
+          ${renderTriageSection(repository.triage ?? null)}
         </div>
 
         ${renderHealthBreakdown({

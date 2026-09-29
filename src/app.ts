@@ -35,6 +35,7 @@ let currentView: View = "dashboard";
 let returnView: View = "dashboard";
 let selectedRepositoryId: string | null = null;
 let pendingRemoveId: string | null = null;
+let dashboardFilter: "all" | "needs-triage" = "all";
 const refreshingIds = new Set<string>();
 
 function navigate(view: View): void {
@@ -56,7 +57,7 @@ function render(): string {
 
   const page =
     currentView === "dashboard"
-      ? renderDashboard({ repositories })
+      ? renderDashboard({ repositories, triageFilter: dashboardFilter })
       : currentView === "repositories"
         ? renderRepositories({ repositories })
         : selected
@@ -184,6 +185,12 @@ function handleAction(target: HTMLElement): void {
 
     case "back":
       navigate(returnView);
+      break;
+
+    case "set-triage-filter":
+      dashboardFilter =
+        target.dataset.filter === "needs-triage" ? "needs-triage" : "all";
+      paint();
       break;
 
     case "refresh":

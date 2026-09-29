@@ -46,11 +46,28 @@ cli/server/
 
 | Category      | Max | Based on                                              |
 | ------------- | --- | ----------------------------------------------------- |
-| Activity      | 25  | Date of the latest commit                             |
-| Issues        | 20  | Number of open issues (PRs excluded)                  |
-| Pull requests | 15  | Number of open pull requests                          |
-| CI            | 20  | Latest GitHub Actions run (unknown scores neutrally)  |
-| Releases      | 20  | Most recent release and its age                       |
+| Activity      | 17  | Date of the latest commit                             |
+| Issues        | 16  | Number of open issues (PRs excluded)                  |
+| Pull requests | 10  | Number of open pull requests                          |
+| CI            | 16  | Latest GitHub Actions run (unknown scores neutrally)  |
+| Releases      | 14  | Most recent release and its age                       |
+| Bus factor    | 12  | Contributor concentration (see below)                 |
+| Triage        | 15  | Age of open issues and pull requests (see below)      |
+
+The bus factor category measures how widely knowledge is spread among
+contributors: the *bus factor* is the smallest number of top contributors
+whose commits sum to at least half of all commits, and the *top contributor
+share* is the percentage of commits owned by the number-one contributor.
+A bus factor of 3 or more scores full points, a bus factor of 2 scores 8,
+and a single dominant contributor (share ≥ 70%) scores 0. If GitHub cannot
+provide contributor data (for example when a repository's history is too
+large to list), the category scores a neutral 6 out of 12.
+
+The triage category measures how long open issues and pull requests have
+been waiting: it is driven by the *median age* of all open items. A median
+age of 30 days or less scores full points, up to 60 days scores 10, up to
+90 days scores 5, and older backlogs score 0. Repositories without any open
+issues or pull requests also score full points.
 
 ## Prerequisites
 

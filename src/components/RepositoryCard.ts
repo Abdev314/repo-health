@@ -14,12 +14,64 @@ interface RepositoryCardProps {
   repository: Repository;
 }
 
+function busFactorRisk(repository: Repository): {
+  label: string;
+  badge: string;
+} | null {
+  const busFactor = repository.busFactor ?? null;
+
+  if (busFactor === null || busFactor >= 3) {
+    return null;
+  }
+
+  if (busFactor <= 1) {
+    return {
+      label: `Bus factor ${busFactor}`,
+      badge: "bg-rose-50 text-rose-700",
+    };
+  }
+
+  return {
+    label: `Bus factor ${busFactor}`,
+    badge: "bg-amber-50 text-amber-700",
+  };
+}
+
+function triageRisk(repository: Repository): {
+  label: string;
+  badge: string;
+} | null {
+  const triage = repository.triage ?? null;
+
+  if (!triage || triage.openItemCount === 0) {
+    return null;
+  }
+
+  if (triage.medianAgeDays > 90) {
+    return {
+      label: "High triage risk",
+      badge: "bg-rose-50 text-rose-700",
+    };
+  }
+
+  if (triage.medianAgeDays > 30) {
+    return {
+      label: "Stale triage",
+      badge: "bg-amber-50 text-amber-700",
+    };
+  }
+
+  return null;
+}
+
 export function renderRepositoryCard({
   repository,
 }: RepositoryCardProps): string {
   const status = HEALTH_STATUS_STYLES[healthStatus(repository.health)];
   const activity = ACTIVITY_STATUS_STYLES[repository.activity];
   const ci = CI_STATUS_STYLES[repository.ciStatus];
+  const busRisk = busFactorRisk(repository);
+  const backlogRisk = triageRisk(repository);
   const fullName = `${repository.owner}/${repository.name}`;
   const description = repository.description || "No description provided.";
 
@@ -32,12 +84,24 @@ export function renderRepositoryCard({
     >
       <div class="flex items-start justify-between gap-4">
         <div class="min-w-0">
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <span class="h-2 w-2 rounded-full ${activity.dot}"></span>
 
             <span class="text-xs font-semibold uppercase tracking-wide ${activity.text}">
               ${activity.label}
             </span>
+
+            ${
+              busRisk
+                ? `<span class="rounded-full px-2 py-0.5 text-[11px] font-semibold ${busRisk.badge}">${busRisk.label}</span>`
+                : ""
+            }
+
+            ${
+              backlogRisk
+                ? `<span class="rounded-full px-2 py-0.5 text-[11px] font-semibold ${backlogRisk.badge}">${backlogRisk.label}</span>`
+                : ""
+            }
           </div>
 
           <h3 class="mt-2 truncate text-base font-bold text-slate-900">

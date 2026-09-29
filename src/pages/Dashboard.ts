@@ -16,6 +16,7 @@ import type { Repository } from "../types/repository";
 
 interface DashboardProps {
   repositories: Repository[];
+  triageFilter: "all" | "needs-triage";
 }
 
 const STATUS_ORDER: HealthStatus[] = ["healthy", "warning", "at-risk"];
@@ -160,6 +161,7 @@ function renderHealthOverview(repositories: Repository[]): string {
 
 export function renderDashboard({
   repositories,
+  triageFilter,
 }: DashboardProps): string {
   if (!repositories.length) {
     return `
@@ -198,7 +200,12 @@ export function renderDashboard({
     (repository) => repository.ciStatus === "failing",
   ).length;
   const averageStatus = HEALTH_STATUS_STYLES[healthStatus(averageHealth)];
-  const preview = repositories.slice(0, 3);
+  const needsTriage = repositories.filter(
+    (repository) => (repository.triage?.medianAgeDays ?? 0) > 30,
+  );
+  const visibleRepositories =
+    triageFilter === "needs-triage" ? needsTriage : repositories;
+  const preview = visibleRepositories.slice(0, 3);
 
   return `
     <div>
@@ -263,7 +270,7 @@ export function renderDashboard({
         </div>
 
         <section>
-          <div class="mb-4 flex items-center justify-between">
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 class="text-base font-bold text-slate-900">
                 Repositories
@@ -271,27 +278,72 @@ export function renderDashboard({
 
               <p class="mt-1 text-sm text-slate-500">
                 ${
-                  total > 3
-                    ? `Showing ${preview.length} of ${formatNumber(total)} monitored repositories.`
-                    : "Your monitored GitHub repositories."
+                  triageFilter === "needs-triage"
+                    ? `${formatNumber(needsTriage.length)} ${needsTriage.length === 1 ? "repository needs" : "repositories need"} triage. Showing ${preview.length}.`
+                    : total > 3
+                      ? `Showing ${preview.length} of ${formatNumber(total)} monitored repositories.`
+                      : "Your monitored GitHub repositories."
                 }
               </p>
             </div>
 
-            <button
-              data-nav="repositories"
-              class="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50"
-            >
-              View all
-              ${icon("arrow-right", "h-4 w-4")}
-            </button>
+            <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1 rounded-full border border-slate-200 bg-white p-1">
+                <button
+                  data-action="set-triage-filter"
+                  data-filter="all"
+                  class="rounded-full px-3 py-1 text-xs font-semibold transition ${
+                    triageFilter === "all"
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-500 hover:text-slate-700"
+                  }"
+                >
+                  All (${formatNumber(total)})
+                </button>
+
+                <button
+                  data-action="set-triage-filter"
+                  data-filter="needs-triage"
+                  class="rounded-full px-3 py-1 text-xs font-semibold transition ${
+                    triageFilter === "needs-triage"
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-500 hover:text-slate-700"
+                  }"
+                >
+                  Needs triage (${formatNumber(needsTriage.length)})
+                </button>
+              </div>
+
+              <button
+                data-nav="repositories"
+                class="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50"
+              >
+                View all
+                ${icon("arrow-right", "h-4 w-4")}
+              </button>
+            </div>
           </div>
 
-          <div class="grid gap-4 xl:grid-cols-3">
-            ${preview
-              .map((repository) => renderRepositoryCard({ repository }))
-              .join("")}
-          </div>
+          ${
+            preview.length
+              ? `
+                <div class="grid gap-4 xl:grid-cols-3">
+                  ${preview
+                    .map((repository) => renderRepositoryCard({ repository }))
+                    .join("")}
+                </div>
+              `
+              : `
+                <div class="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-10 text-center">
+                  <p class="text-sm font-medium text-slate-500">
+                    No repositories need triage
+                  </p>
+                  <p class="mt-1 text-xs text-slate-400">
+                    All open issues and pull requests are being handled promptly.
+                  </p>
+                </div>
+              `
+          }
         </section>
       </main>
     </div>
