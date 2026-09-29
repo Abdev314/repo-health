@@ -1,7 +1,7 @@
 import { renderHeader } from "../components/Header";
 import { renderStatCard } from "../components/StatCard";
 import { renderSectionCard } from "../components/SectionCard";
-import { renderRepositoryCard } from "../components/RepositoryCard";
+import { renderDashboardRepositoryCard } from "../components/DashboardRepositoryCard";
 import { renderEmptyState } from "../components/EmptyState";
 import { icon } from "../components/icons";
 import {
@@ -108,48 +108,44 @@ function renderHealthOverview(repositories: Repository[]): string {
   }));
 
   return `
-    <div class="space-y-4">
+    <div class="space-y-2.5">
       ${groups
         .map(
-          ({ status, style, repositories: group }) => `
-            <div class="flex items-start gap-3">
-              <span class="mt-1 flex h-2.5 w-2.5 shrink-0 rounded-full ${style.dot}"></span>
+          ({ style, repositories: group }) => `
+            <div class="flex items-center gap-2.5">
+              <span class="h-2 w-2 shrink-0 rounded-full ${style.dot}"></span>
 
-              <div class="min-w-0 flex-1">
-                <div class="flex items-baseline justify-between gap-3">
-                  <p class="text-sm font-semibold text-slate-700">
-                    ${style.label}
-                  </p>
+              <span class="shrink-0 whitespace-nowrap text-xs font-semibold text-slate-600">
+                ${style.label}
+              </span>
 
-                  <p class="text-sm font-bold ${style.text}">
-                    ${group.length}
-                  </p>
-                </div>
+              <span class="shrink-0 text-xs font-bold ${style.text}">
+                ${group.length}
+              </span>
 
-                <div class="mt-1.5 flex flex-wrap gap-1.5">
-                  ${
-                    group.length
-                      ? group
-                          .slice(0, 4)
-                          .map(
-                            (repository) => `
-                              <button
-                                data-action="view"
-                                data-repository-id="${repository.id}"
-                                title="${escapeHtml(fullName(repository))}"
-                                class="max-w-44 truncate rounded-full border border-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
-                              >
-                                ${escapeHtml(fullName(repository))}
-                              </button>
-                            `,
-                          )
-                          .join("") +
-                        (group.length > 4
-                          ? `<span class="px-1 text-xs text-slate-300">+${group.length - 4} more</span>`
-                          : "")
-                      : `<span class="text-xs text-slate-300">None</span>`
-                  }
-                </div>
+              <div class="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1">
+                ${
+                  group.length
+                    ? group
+                        .slice(0, 3)
+                        .map(
+                          (repository) => `
+                            <button
+                              data-action="view"
+                              data-repository-id="${repository.id}"
+                              title="${escapeHtml(fullName(repository))}"
+                              class="max-w-36 truncate rounded-full bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                            >
+                              ${escapeHtml(fullName(repository))}
+                            </button>
+                          `,
+                        )
+                        .join("") +
+                      (group.length > 3
+                        ? `<span class="text-[11px] text-slate-300">+${group.length - 3}</span>`
+                        : "")
+                    : `<span class="text-[11px] text-slate-300">None</span>`
+                }
               </div>
             </div>
           `,
@@ -255,7 +251,7 @@ export function renderDashboard({
           })}
         </section>
 
-        <div class="grid gap-4 lg:grid-cols-2">
+        <div class="grid items-start gap-4 lg:grid-cols-2">
           ${renderSectionCard({
             title: "Health overview",
             subtitle: "Distribution of repository health",
@@ -327,9 +323,11 @@ export function renderDashboard({
           ${
             preview.length
               ? `
-                <div class="grid gap-4 xl:grid-cols-3">
+                <div class="space-y-2">
                   ${preview
-                    .map((repository) => renderRepositoryCard({ repository }))
+                    .map((repository) =>
+                      renderDashboardRepositoryCard({ repository }),
+                    )
                     .join("")}
                 </div>
               `

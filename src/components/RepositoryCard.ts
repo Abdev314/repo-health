@@ -14,7 +14,7 @@ interface RepositoryCardProps {
   repository: Repository;
 }
 
-function busFactorRisk(repository: Repository): {
+export function busFactorRisk(repository: Repository): {
   label: string;
   badge: string;
 } | null {
@@ -37,7 +37,7 @@ function busFactorRisk(repository: Repository): {
   };
 }
 
-function triageRisk(repository: Repository): {
+export function triageRisk(repository: Repository): {
   label: string;
   badge: string;
 } | null {
